@@ -1,0 +1,165 @@
+---
+title: "Impact of Transmission Type on MPG of Cars in 1974"
+author: "Pete Petersen III"
+date: "6/23/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Abstract  
+
+In this paper we will analyze the relationships of the 10 variables present in the MTCARS data set in order to make a determination as to wether or not manual versus automatic transmission are more fuel efficient once the uncorrelated regressors are removed from the model.  We conclude that the data alludes to the reasonable conclusion that manual transmision likely increases fuel efficiency overall.  Unfortunately,  we don’t have enough evidence from the data at hand to say there is a significant true difference or to make stonger claims.  It is likely that the data is confounded by a much higher concentration of displacements at the low end of the manual types.
+
+## Exploratory Data Analysis
+
+The data was extracted from the 1974 Motor Trend US magazine, and comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973–74 models). We begin our analysis by exploring nature of the data in (MTCARS) in order to familiarize ourselves with the size and properties of the data.  Upon inspection, we notice several numerical vectors of data that would probably serve best for modeling if we covert them to factors.
+
+
+```{r}
+require(graphics)
+
+## possibly more meaningful, e.g., for summary() or bivariate plots:
+mtcars2 <- within(mtcars, {
+   vs <- factor(vs, labels = c("V", "S"))
+   am <- factor(am, labels = c("automatic", "manual"))
+   cyl  <- ordered(cyl)
+   gear <- ordered(gear)
+   carb <- ordered(carb)
+})
+
+```
+
+## Data Visualization
+
+The next step in our analysis included a pairwise plot of our regressors (see Apendix II) in order to determine which ones seem to be correlated with MPG.  We note that cyl, hp, wt, and am each visiably demonstrate a correlation with our outcome variable MPG.
+
+## EDA Plots
+
+The coplot below seems to support aur thesis that manual transmissions are more fuel efficient.  Although it is interesting to note that manual transmisions are associated with smaller displacement engines.  This is a fact we will need to be cautious of when we make inferences from our final model.  The dot colors in the plot represent 4-cyl, 6-cyl, and 8-cyl as black, red, and green respectively.
+
+```{r coplot, fig.height=4, fig.width=6, fig.cap= "Figure 1"}
+coplot(mpg ~ disp | as.factor(am) , data = mtcars2,
+       panel = panel.smooth, rows = 1, col = mtcars2$cyl)
+legend(7,4.3,unique(mtcars2$cyl),col=1:length(mtcars2$cyl),pch=1)
+```
+
+The Boxplots seem to also indicate that there is some correlation of MPG with manual transmission type.
+
+```{r boxplot, fig.height=4, fig.width=6, fig.cap= "Figure 2"}
+boxplot(mpg ~ am, data =  mtcars2, col="beige")
+```
+
+## Build Models
+
+We first constructed a model that predicts MPG from all columns of data (Model.All).  We performed a backword stepping analysis (see Apendix III for details) that resulted in Model.Best.Fit.  This model was very much aligned with our expectations. 
+
+```{r models }
+Model.All <- lm(mpg ~ ., mtcars2)
+Model.BestFit <- lm( mpg ~  hp + wt + am + cyl , data = mtcars2)
+summary(Model.BestFit)
+anova(Model.All,Model.BestFit)
+
+```
+## Model Interpretation
+
+Based on the model, the manual transmision adds about 1.8 MPG over automatic transmission types although this is with a troubling 0.2 p-value.  Therefore, under the terms of this model, we can not rule out the the Null hypothesis that there is no difference in MPG based on trnsmission type.  Because this result is so counter to actually experience, we assume that there is either a sampling problem or we are missing an important predicter and biasing our coeficient.
+
+## Error Analysis
+We see that residuals versus that fitted values are in line with no notable patterns.  The plot highlights the relatively strong performance of the Toyota Corolla and Fiat 128 (+10%) and the weak performance (-10%) by the Datsun 710 versus their predicted MPG.
+
+```{r}
+plot(Model.BestFit, which = 1)
+```
+
+
+In the QQ plot below,  we see that the standardized residuals are for the most part normally distributed with the exception of Toyota, Fiat, and Chrysler being string performers relative to their predicted values.
+
+
+```{r}
+plot(Model.BestFit, which = 2)
+```
+
+
+The Scale-Location Plot is indicating that as residuals spread wider from each other the red spread line goes up. In our case the data is homoscedastic and has uniform variance but later it becomes heteroscedastic.  This is highlighting a bit of a problem in our linear model that the variances are not as homoscedastic as we would like.  This is adding some uncertainty into the strength of the model.
+
+
+```{r}
+plot(Model.BestFit, which = 3)
+```
+
+The measurement is a combination of each observation's leverage and residual values; the higher the leverage and residuals, the higher the Cook's distance.
+
+```{r}
+plot(Model.BestFit, which = 4)
+```
+
+## Conclusion
+
+In our tests, we've found that in some cars a manual transmission may improve gas mileage by a up to 5 mpg, compared with an automatic in the 95% confidence interval.  This conclusion is supported by the fact that older automatic cars are fuel inefficient because the torque converter generally slips, wasting fuel as the car shifts. The uncertaintity in our conclusions stem from an unequal distribution of light, low displacement cars in manual transmissions.  This is true most notably for the Toyota Corolla and the Fiat 128 in the manual category which have much higher MPG for the displacement due to their lower weight.  On the Low MPG side of the automatic transmission, we see that the Lincoln and Maserati are exerting their influence as well.  Additionally, because of the heteroscedaticity of the model their does appear to me a quadrative term to the model which we have not discovered that could lead to a better fit when known and included.
+
+    Lastly, we would like to make the following assumptions:
+    
+      1) The test were accurate and that all cars experienced the same road conditions, mix of highway and city driving.
+    
+      2) The capabilities of the drivers of the manual transmisions are consistent.
+
+```{r}
+confint(Model.BestFit)[4,]
+```
+
+
+
+
+## Appendix
+
+```{r mtcars, fig.height=4, fig.width=6, fig.cap= "Figure 1"}
+summary(mtcars)
+```
+
+
+## Apendix I - Variables in MTCARS
+
+
+[, 1]	mpg	Miles/(US) gallon
+[, 2]	cyl	Number of cylinders
+[, 3]	disp	Displacement (cu.in.)
+[, 4]	hp	Gross horsepower
+[, 5]	drat	Rear axle ratio
+[, 6]	wt	Weight (1000 lbs)
+[, 7]	qsec	1/4 mile time
+[, 8]	vs	Engine (0 = V-shaped, 1 = straight)
+[, 9]	am	Transmission (0 = automatic, 1 = manual)
+[,10]	gear	Number of forward gears
+[,11]	carb	Number of carburetors
+
+
+## Apendix II - Plot of Potential Regressors in MTCARS
+
+```{r}
+plot(mtcars2)
+```
+
+## Appendix III - Stepping all to Best Fit
+
+```{r}
+Best.Fit <- step(Model.All)
+```
+
+## Appendix IV - Influence Measures
+
+
+```{r}
+
+influence.measures(Model.BestFit)
+```
+## Apendix V - Data Summary
+
+```{r}
+summary(mtcars2)
+```
+
